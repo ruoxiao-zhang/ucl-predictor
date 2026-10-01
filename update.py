@@ -9,7 +9,8 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 TEAMS_FILE = os.path.join(ROOT, "teams.json")
 DATA_FILE = os.path.join(ROOT, "data.json")
 ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scoreboard?dates={}"
-CLUBELO = ["http://api.clubelo.com/{}", "https://api.clubelo.com/{}"]
+# ClubElo's data API has returned 502 for every date since at least 2026-10-01 (site redesigned); one quick try per run.
+CLUBELO = ["http://api.clubelo.com/{}"]
 MONTHS = ["202609", "202610", "202611", "202612", "202701"]  # league phase
 LEAGUE_END = "2027-01-28"
 POLYMARKET = "https://gamma-api.polymarket.com/events?slug={}"
@@ -28,11 +29,11 @@ def log(kind, msg):
     LOG.append(line)
 
 
-def fetch(url, tries=3):
+def fetch(url, tries=3, timeout=40):
     for i in range(tries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "ucl-simulator/1.0 (personal project)", "Accept": "application/json, text/csv, */*"})
-            with urllib.request.urlopen(req, timeout=40) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read().decode("utf-8")
         except Exception as e:
             err = e
@@ -127,7 +128,7 @@ def load_clubelo(teams):
     text = None
     for u in CLUBELO:
         try:
-            text = fetch(u.format(day), tries=2)
+            text = fetch(u.format(day), tries=1, timeout=10)
             if "Club" in text[:200]: break
             text = None
         except Exception as e:

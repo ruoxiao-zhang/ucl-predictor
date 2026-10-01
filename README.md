@@ -27,5 +27,5 @@ Cloud routine `trig_01E9cZF3nwqVzdwLB1KwyjdA` runs Tue/Wed/Thu 00:00 UTC (08:00 
 ## Known gaps
 
 - League phase only. When the knockout draw happens (late January 2027), `update.py` must start reading real knockout ties instead of simulating them.
-- ClubElo's API returned 502 on 2026-10-01; until it works, ratings are the pre-season estimates plus Elo updates from Champions League games only.
+- ClubElo's data API returns 502 for every date (site redesigned, its Fixtures API says "deactivated"); update.py makes one 10-second try per run. Until it works, ratings are the pre-season estimates plus Elo updates from Champions League games only.
 - The Poisson model under-predicts draws in lopsided games compared with the market.
