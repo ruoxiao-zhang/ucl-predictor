@@ -26,7 +26,7 @@ Live page: https://claude.ai/artifact/BV98ZMG31YLif14jMU5nja · Local copy: `C:\
    - Model or page changes: keep `update.py` and the page's JS model in sync (HFA, BASE, SCALE are written to data.json and read by the page).
 3. **Run** `python -X utf8 update.py` (ClubElo timeouts take ~90 s locally; WARN lines for ClubElo are normal). Read every line.
 4. **Publish** with `url` above, `file_path` `C:\Users\lily1\ucl-predictor\index.html`, no icon, `files` = `{"data.json": "C:\Users\lily1\ucl-predictor\data.json", "src/update.py": {"from": "C:\Users\lily1\ucl-predictor\update.py", "contentType": "text/plain"}, "src/teams.json": "C:\Users\lily1\ucl-predictor\teams.json", "src/index.html.txt": {"from": "C:\Users\lily1\ucl-predictor\index.html", "contentType": "text/plain"}}`.
-5. **Commit** in the local git repo (git lives at `C:\Program Files\Git\cmd`); push if a remote is set. Copy this skill to `skill/SKILL.md` if it changed.
+5. **Commit and push.** Repo: https://github.com/ruoxiao-zhang/ucl-predictor (private, branch main). Git lives at `C:\Program Files\Git\cmd`. Copy this skill to `skill/SKILL.md` if it changed, `git add -A`, commit with a one-line message, `git push`. The cloud routine does not touch GitHub.
 6. **Report** in Chinese: new results, model vs market hit rate, title-odds movers.
 
 ## Debugging the routine

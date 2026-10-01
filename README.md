@@ -2,7 +2,7 @@
 
 A bilingual (中文 / English) Champions League 2026/27 simulator: per-match predictions (model vs betting market), odds of reaching each round, the live league-phase table and a title-odds trend.
 
-Live page: https://claude.ai/artifact/BV98ZMG31YLif14jMU5nja
+Live page: https://claude.ai/artifact/BV98ZMG31YLif14jMU5nja · Repo: https://github.com/ruoxiao-zhang/ucl-predictor (private)
 
 | File | Role |
 |---|---|
