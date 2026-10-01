@@ -7,7 +7,7 @@ Live page: https://claude.ai/artifact/BV98ZMG31YLif14jMU5nja
 | File | Role |
 |---|---|
 | `teams.json` | The 36 teams: ESPN id, names, pot, pre-season rating `elo0`, ClubElo name candidates, and manual `adjustments` (team, delta, from, until, zh, en) for injuries / transfers. |
-| `update.py` | Pulls fixtures, results and DraftKings odds from ESPN's public scoreboard API, ratings from ClubElo (falls back to its own Elo walk), freezes per-match predictions before kick-off, simulates the season 10,000 times, writes `data.json`. Standard library only. |
+| `update.py` | Pulls fixtures, results and DraftKings odds from ESPN's public scoreboard API, the title market from Polymarket, ratings from ClubElo (falls back to its own Elo walk), freezes per-match predictions before kick-off, simulates the season 50,000 times, writes `data.json`. Standard library only. |
 | `data.json` | Everything the page shows, plus the history of title odds. |
 | `index.html` | The page. Loads `data.json`; re-simulates in the browser when a viewer edits ratings. |
 

@@ -55,12 +55,21 @@ h1 em{font-style:normal;color:var(--accent)}
 @media (max-width:820px){.fav{grid-template-columns:1fr}}
 .fav h2{font-size:15px;font-weight:700;margin-bottom:12px}
 .bars{display:grid;gap:7px}
-.bar{display:grid;grid-template-columns:132px 1fr 52px;gap:10px;align-items:center}
+.bar{display:grid;grid-template-columns:120px 1fr 46px 46px;gap:10px;align-items:center}
+.bar.hd{font-size:11px;color:var(--muted);letter-spacing:.04em}
+.bar.hd span:nth-child(n+3){text-align:right}
 .bar .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
-.bar .tr{height:16px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.bar .tr{height:16px;background:var(--surface2);border-radius:2px;position:relative}
+.bar .tk{position:absolute;top:-3px;bottom:-3px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink)}
 .bar .fl{height:100%;background:var(--accent);border-radius:0 4px 4px 0;transition:width .6s ease}
 .bar:first-child .fl{background:var(--gold)}
 .bar .v{font-family:var(--num);font-size:17px;font-weight:600;text-align:right}
+.bar .mv{font-family:var(--num);font-size:16px;text-align:right;color:var(--muted)}
+.keyl{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:-4px 0 12px}
+.keyl i{display:inline-block;vertical-align:middle;margin-right:6px}
+.keyl .k1{width:14px;height:10px;background:var(--accent);border-radius:2px}
+.keyl .k2{width:3px;height:14px;background:var(--ink);border-radius:2px}
+.srcnote{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
 .trend{position:relative}
 .trend svg{width:100%;height:auto;display:block;overflow:visible}
 .trend .empty{color:var(--muted);font-size:13px;padding:18px;border:1px dashed var(--line);border-radius:4px}
@@ -183,7 +192,9 @@ tr.cut2 td{border-bottom:2px dashed var(--muted)}
 <section class="fav">
   <div>
     <h2 data-i="favTitle"></h2>
+    <div class="keyl" id="keyl"></div>
     <div class="bars" id="bars"></div>
+    <div class="srcnote" id="srcnote"></div>
     <div class="headline" id="headline"></div>
   </div>
   <div>
@@ -274,17 +285,19 @@ const store={get(k,d){try{const v=localStorage.getItem("ucl2627-"+k);return v==n
 
 const I18N={
  zh:{eyebrow:"2026/27 赛季 · 欧冠",h1:"欧冠<em>推演室</em>",mPlayed:"联赛阶段已赛",mNext:"下一轮",mSims:"次模拟",
-  favTitle:"夺冠概率前十",trendTitle:"夺冠概率走势 · 前四热门",trendEmpty:"走势图需要至少两次更新，下一个比赛日之后就会出现。",
+  favTitle:"夺冠概率前十",kModel:"我们的模拟",kMarket:"博彩市场（Polymarket）",colSim:"模拟",colMkt:"市场",
+  srcNote:"模拟：已开盘的 {n} 场用 DraftKings 单场赔率，其余 {m} 场联赛和整个淘汰赛用我们的评分模型，共推演 {s} 次。",srcMkt:"市场：Polymarket 冠军盘实时价格，按 36 队合计 100% 换算（{t}，成交额 {v}）。",
+  split:"模型和市场分歧最大的是 <b>{t}</b>：模拟 {a}%，市场 {b}%。",trendTitle:"夺冠概率走势 · 前四热门",trendEmpty:"走势图需要至少两次更新，下一个比赛日之后就会出现。",
   updated:"数据更新于",tMatches:"每轮比赛预测",tTable:"晋级概率总表",tStand:"积分榜",tMatch:"任选两队",tRatings:"球队实力",
   md:"第 {n} 轮",mdShort:"R{n}",model:"模型",market:"市场",pending:"待赛",live:"进行中",backfill:"回溯",
   accModel:"模型猜中",accMarket:"市场猜中",accBrier:"模型 Brier 分数",accBrierHint:"越低越好，乱猜约 0.67",accNone:"还没有可对比的已赛场次",
   accMarketNone:"市场赔率从第 2 轮开始记录",hit:"中",miss:"未中",
   mdNote:"模型＝我们的实力评分；市场＝DraftKings 赔率去掉抽水后的概率。模拟时临近的比赛用市场概率，其余用模型。",
   mdNoteDone:"已赛场次显示的是开赛前最后一次更新时的预测。第 1 轮是用赛前评分回溯计算的。",
-  tableH:"每支球队走到每一轮的概率",tableHint:"按夺冠概率排序。前 8 名直接进 16 强；第 9–24 名打附加赛；第 25 名以后出局。",
+  tableH:"每支球队走到每一轮的概率",tableHint:"按模拟的夺冠概率排序。前 8 名直接进 16 强；第 9–24 名打附加赛；第 25 名以后出局。最后一列是 Polymarket 冠军盘给出的概率，供对照。",
   standH:"联赛阶段积分榜（{n} 场后）",standHint:"右侧“预计排名”“预计积分”是模拟的平均值。",
   z1:"1–8 直接进 16 强",z2:"9–24 附加赛",z3:"25–36 出局",
-  cols:{rk:"#",team:"球队",elo:"评分",pts:"现积分",xpts:"预计积分",top8:"前8",top24:"前24",r16:"16强",qf:"8强",sf:"4强",fin:"决赛",win:"夺冠",
+  cols:{rk:"#",team:"球队",elo:"评分",pts:"现积分",xpts:"预计积分",top8:"前8",top24:"前24",r16:"16强",qf:"8强",sf:"4强",fin:"决赛",win:"夺冠",mwin:"市场夺冠",
    p:"赛",w:"胜",d:"平",l:"负",gf:"进",ga:"失",gd:"净",xpos:"预计排名"},
   matchH:"任选两队，算一场比赛",matchHint:"按当前实力评分和泊松进球模型计算，不受本赛季对阵表限制。",home:"主队",away:"客队",
   neutral:"中立场地（如决赛）",swap:"交换主客",win:"{t} 胜",draw:"平局",xg:"{t} 预期进球",gridH:"比分概率（%）· 行＝主队进球，列＝客队进球",
@@ -297,23 +310,25 @@ const I18N={
   changed:"已修改评分，点“用我的评分重新模拟”更新概率。",done:"已完成 {n} 次模拟，用时 {ms} 毫秒。",
   customOn:"你正在看用自定义评分模拟的结果（不使用市场赔率）。",customOff:"回到官方结果",
   side:"头号热门 <b>{t}</b>：夺冠 {w}%，进决赛 {f}%。第三、四档里最有冲击力的是 <b>{d}</b>，进 8 强 {q}%。",
-  about:[["模型怎么算","每队有一个类 Elo 实力评分。比赛按评分差（主场 +65 分）换算成双方的预期进球，再用泊松分布生成比分。剩下的联赛阶段比赛和整个淘汰赛完整踢 10,000 遍，统计每队到达每一轮的次数。"],
-   ["数据从哪来","赛程、比分和赔率来自 ESPN 的公开数据接口；赔率由 DraftKings 提供，只换算成概率展示。评分优先用 ClubElo，连不上时沿用上次的评分，并按欧冠结果自行更新。"],
+  about:[["模型怎么算","每队有一个类 Elo 实力评分。比赛按评分差（主场 +65 分）换算成双方的预期进球，再用泊松分布生成比分。剩下的联赛阶段比赛和整个淘汰赛完整踢 50,000 遍（你自定义评分时在浏览器里踢 10,000 遍），统计每队到达每一轮的次数。"],
+   ["数据从哪来","赛程、比分和单场赔率来自 ESPN 的公开数据接口，赔率由 DraftKings 提供；冠军盘来自 Polymarket 预测市场。所有赔率只换算成概率展示。评分优先用 ClubElo，连不上时沿用上次的评分，并按欧冠结果自行更新。"],
    ["多久更新一次","每周二、三、四北京时间早上 8 点自动更新：周二抓开赛前的赔率，周三、周四补上前一晚的比分。"],
    ["局限","不单独考虑伤病、轮换和冬窗转会；这些会通过市场赔率和赛果间接体现。淘汰赛的真实对阵产生后，模型会改为直接使用。"]],
   err:"数据没能加载，请稍后刷新。"},
  en:{eyebrow:"2026/27 season · Champions League",h1:"UCL <em>Simulator</em>",mPlayed:"League-phase games played",mNext:"Next matchday",mSims:"Simulations",
-  favTitle:"Title odds, top ten",trendTitle:"Title odds over time · top four",trendEmpty:"The trend needs at least two updates. It appears after the next matchday.",
+  favTitle:"Title odds, top ten",kModel:"Our simulation",kMarket:"Betting market (Polymarket)",colSim:"Sim",colMkt:"Market",
+  srcNote:"Simulation: the {n} games with odds use DraftKings match odds; the other {m} league games and all knockouts use our rating model, played out {s} times.",srcMkt:"Market: live Polymarket title-market prices, rescaled so the 36 teams sum to 100% ({t}, {v} traded).",
+  split:"Biggest disagreement: <b>{t}</b>, {a}% in the simulation vs {b}% in the market.",trendTitle:"Title odds over time · top four",trendEmpty:"The trend needs at least two updates. It appears after the next matchday.",
   updated:"Updated",tMatches:"Match predictions",tTable:"Odds by round",tStand:"Table",tMatch:"Any two teams",tRatings:"Team ratings",
   md:"Matchday {n}",mdShort:"MD{n}",model:"Model",market:"Market",pending:"vs",live:"Live",backfill:"Backfilled",
   accModel:"Model picks correct",accMarket:"Market picks correct",accBrier:"Model Brier score",accBrierHint:"Lower is better; guessing ≈ 0.67",accNone:"No finished games to compare yet",
   accMarketNone:"Market odds are recorded from matchday 2",hit:"hit",miss:"miss",
   mdNote:"Model = our ratings. Market = DraftKings odds with the margin removed. The simulation uses the market for imminent games and the model for the rest.",
   mdNoteDone:"Finished games show the last prediction made before kick-off. Matchday 1 was backfilled from pre-season ratings.",
-  tableH:"How far each team gets",tableHint:"Sorted by title odds. Places 1–8 go straight to the round of 16, 9–24 enter the play-offs, 25+ are out.",
+  tableH:"How far each team gets",tableHint:"Sorted by simulated title odds. Places 1–8 go straight to the round of 16, 9–24 enter the play-offs, 25+ are out. The last column is the Polymarket title market, for comparison.",
   standH:"League phase table (after {n} games)",standHint:"Projected position and points are averages across all simulations.",
   z1:"1–8 round of 16",z2:"9–24 play-offs",z3:"25–36 eliminated",
-  cols:{rk:"#",team:"Team",elo:"Rating",pts:"Pts",xpts:"Proj. pts",top8:"Top 8",top24:"Top 24",r16:"R16",qf:"QF",sf:"SF",fin:"Final",win:"Win",
+  cols:{rk:"#",team:"Team",elo:"Rating",pts:"Pts",xpts:"Proj. pts",top8:"Top 8",top24:"Top 24",r16:"R16",qf:"QF",sf:"SF",fin:"Final",win:"Win",mwin:"Market win",
    p:"P",w:"W",d:"D",l:"L",gf:"GF",ga:"GA",gd:"GD",xpos:"Proj. pos"},
   matchH:"Pick any two teams",matchHint:"Uses current ratings and a Poisson goal model. Any pairing works, not just this season's fixtures.",home:"Home",away:"Away",
   neutral:"Neutral venue (e.g. the final)",swap:"Swap home and away",win:"{t} win",draw:"Draw",xg:"{t} expected goals",gridH:"Score probabilities (%) · rows = home goals, columns = away goals",
@@ -326,8 +341,8 @@ const I18N={
   changed:"Ratings edited. Press “Re-run with my ratings” to update the odds.",done:"Ran {n} simulations in {ms} ms.",
   customOn:"You're viewing a simulation with your own ratings (market odds not used).",customOff:"Back to official results",
   side:"Favourite: <b>{t}</b>, {w}% to win, {f}% to reach the final. Strongest outsider from pots 3–4: <b>{d}</b>, {q}% to reach the quarter-finals.",
-  about:[["How it works","Every team has an Elo-style rating. The rating gap (plus 65 for home advantage) sets each side's expected goals, and a Poisson draw produces the score. The rest of the league phase and the whole knockout bracket are played 10,000 times, counting how often each team reaches each round."],
-   ["Where the data comes from","Fixtures, scores and odds come from ESPN's public data feed; the odds are DraftKings', shown only as probabilities. Ratings come from ClubElo when it's reachable; otherwise the last ratings carry over and update from Champions League results."],
+  about:[["How it works","Every team has an Elo-style rating. The rating gap (plus 65 for home advantage) sets each side's expected goals, and a Poisson draw produces the score. The rest of the league phase and the whole knockout bracket are played 50,000 times (10,000 when you re-run with your own ratings in the browser), counting how often each team reaches each round."],
+   ["Where the data comes from","Fixtures, scores and match odds come from ESPN's public data feed (odds by DraftKings); the title market comes from the Polymarket prediction market. Odds are shown only as probabilities. Ratings come from ClubElo when it's reachable; otherwise the last ratings carry over and update from Champions League results."],
    ["How often it updates","Automatically every Tuesday, Wednesday and Thursday at 08:00 Beijing time (00:00 UTC): Tuesday captures pre-match odds, Wednesday and Thursday add the previous night's scores."],
    ["Limits","Injuries, rotation and winter transfers aren't modelled directly; they show up indirectly through market odds and results. Once real knockout ties exist, the model will use them."]],
   err:"Couldn't load the data. Please refresh in a moment."}
@@ -410,13 +425,21 @@ function renderAll(){
   $("m-played").textContent=`${played}/${D.matches.length}`;
   const nx=D.matches.filter(m=>m.state!=="post").sort((a,b)=>a.date<b.date?-1:1)[0];
   $("m-next").textContent=nx?new Date(nx.date).toLocaleDateString(LANG==="zh"?"zh-CN":"en-GB",{month:"short",day:"numeric"}):"–";
-  $("m-sims").textContent=(D.model.sims||10000).toLocaleString("en-US");
+  $("m-sims").textContent=(CUSTOM?10000:(D.model.sims||10000)).toLocaleString("en-US");
   $("custom-banner").classList.toggle("on",CUSTOM);
   const byWin=[...Array(N).keys()].sort((a,b)=>r.win[b]-r.win[a]||r.fin[b]-r.fin[a]||r.r16[b]-r.r16[a]);
-  const top=byWin.slice(0,10), mx=r.win[top[0]]||1;
-  $("bars").innerHTML=top.map(t=>`<div class="bar"><span class="nm">${nm(t)}</span><div class="tr"><div class="fl" style="width:${(r.win[t]/mx*100).toFixed(1)}%"></div></div><span class="v">${pct(r.win[t],1)}%</span></div>`).join("");
+  const MW=TEAMS.map(t=>D.outright&&D.outright.p[t.key]!=null?D.outright.p[t.key]:null);
+  const top=byWin.slice(0,10), mx=Math.max(...top.map(t=>Math.max(r.win[t],MW[t]||0)))||1;
+  $("keyl").innerHTML=`<span><i class="k1"></i>${L().kModel}</span>`+(D.outright?`<span><i class="k2"></i>${L().kMarket}</span>`:"");
+  $("bars").innerHTML=`<div class="bar hd"><span></span><span></span><span>${L().colSim}</span><span>${D.outright?L().colMkt:""}</span></div>`+top.map(t=>`<div class="bar"><span class="nm">${nm(t)}</span><div class="tr"><div class="fl" style="width:${(r.win[t]/mx*100).toFixed(1)}%"></div>${MW[t]!=null?`<div class="tk" style="left:${(MW[t]/mx*100).toFixed(1)}%"></div>`:""}</div><span class="v">${pct(r.win[t],1)}%</span><span class="mv">${MW[t]!=null?pct(MW[t],1)+"%":""}</span></div>`).join("");
+  const nOdds=D.matches.filter(m=>m.state!=="post"&&D.pred[m.id]&&D.pred[m.id].market).length, nRest=D.matches.filter(m=>m.state!=="post").length-nOdds;
+  const loc=LANG==="zh"?"zh-CN":"en-GB";
+  $("srcnote").innerHTML=(CUSTOM?"":fmt(L().srcNote,{n:nOdds,m:nRest,s:(D.model.sims||10000).toLocaleString("en-US")})+" ")+(D.outright?fmt(L().srcMkt,{t:new Date(D.outright.t).toLocaleDateString(loc,{month:"short",day:"numeric"}),v:"$"+(D.outright.volume/1e6).toFixed(1)+"M"}):"");
   const f=byWin[0], dk=[...Array(N).keys()].filter(t=>TEAMS[t].pot>=3).sort((a,b)=>r.qf[b]-r.qf[a])[0];
-  $("headline").innerHTML=fmt(L().side,{t:nm(f),w:pct(r.win[f],1),f:pct(r.fin[f],0),d:nm(dk),q:pct(r.qf[dk],0)});
+  let split="";
+  if(D.outright){ const g=[...Array(N).keys()].filter(t=>MW[t]!=null).sort((a,b)=>Math.abs(r.win[b]-MW[b])-Math.abs(r.win[a]-MW[a]))[0];
+    split=" "+fmt(L().split,{t:nm(g),a:pct(r.win[g],1),b:pct(MW[g],1)}); }
+  $("headline").innerHTML=fmt(L().side,{t:nm(f),w:pct(r.win[f],1),f:pct(r.fin[f],0),d:nm(dk),q:pct(r.qf[dk],0)})+split;
   renderTrend(); renderMatches(); renderTable(byWin); renderStandings(); fillSelects(); renderMatch(); renderRatings();
 }
 
@@ -480,9 +503,9 @@ function renderMatches(){
 $("mdbar").addEventListener("click",e=>{ const b=e.target.closest("button[data-md]"); if(!b) return; MD=+b.dataset.md; renderMatches(); });
 
 function renderTable(byWin){
-  const r=RES, c=L().cols, cols=["top8","top24","r16","qf","sf","fin","win"];
-  $("t-prob").innerHTML=`<thead><tr><th>${c.rk}</th><th>${c.team}</th><th>${c.elo}</th><th>${c.pts}</th><th>${c.xpts}</th>${cols.map(k=>`<th>${c[k]}</th>`).join("")}</tr></thead><tbody>`+
-   byWin.map((t,i)=>`<tr><td class="rk">${i+1}</td><td class="tm">${nm(t)}<small>${TEAMS[t].short}</small></td><td>${Math.round(ELO[t])}</td><td>${CUR.pts[t]}</td><td>${r.pts[t].toFixed(1)}</td>${cols.map(k=>`<td style="${heat(r[k][t])}">${pct(r[k][t])}</td>`).join("")}</tr>`).join("")+"</tbody>";
+  const r=RES, c=L().cols, cols=["top8","top24","r16","qf","sf","fin","win"], op=D.outright?D.outright.p:null;
+  $("t-prob").innerHTML=`<thead><tr><th>${c.rk}</th><th>${c.team}</th><th>${c.elo}</th><th>${c.pts}</th><th>${c.xpts}</th>${cols.map(k=>`<th>${c[k]}</th>`).join("")}${op?`<th>${c.mwin}</th>`:""}</tr></thead><tbody>`+
+   byWin.map((t,i)=>`<tr><td class="rk">${i+1}</td><td class="tm">${nm(t)}<small>${TEAMS[t].short}</small></td><td>${Math.round(ELO[t])}</td><td>${CUR.pts[t]}</td><td>${r.pts[t].toFixed(1)}</td>${cols.map(k=>`<td style="${heat(r[k][t])}">${pct(r[k][t])}</td>`).join("")}${op?`<td style="color:var(--muted)">${pct(op[TEAMS[t].key])}</td>`:""}</tr>`).join("")+"</tbody>";
 }
 function renderStandings(){
   const r=RES, c=L().cols, played=D.matches.filter(m=>m.state==="post").length;

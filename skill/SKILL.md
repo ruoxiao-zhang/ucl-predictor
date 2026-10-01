@@ -22,6 +22,7 @@ Live page: https://claude.ai/artifact/BV98ZMG31YLif14jMU5nja · Local copy: `C:\
 1. **Sync down.** `Artifact` `read` with just the url, then `read` with `paths` `["data.json","src/update.py","src/teams.json","src/index.html.txt"]`; copy each over its local file.
 2. **Change what was asked.**
    - Injury / suspension / transfer: add to `teams.json` `adjustments` an entry `{"team":"ARS","delta":-30,"from":"YYYY-MM-DD","until":"YYYY-MM-DD","zh":"…","en":"…"}` with a dated news source in the reason. Keep deltas modest (a key player ≈ 20–50) and always set `until`.
+   - Polymarket title market: event slug is `polymarket_slug` in teams.json; if the market is replaced, find the new slug and update it.
    - Model or page changes: keep `update.py` and the page's JS model in sync (HFA, BASE, SCALE are written to data.json and read by the page).
 3. **Run** `python -X utf8 update.py` (ClubElo timeouts take ~90 s locally; WARN lines for ClubElo are normal). Read every line.
 4. **Publish** with `url` above, `file_path` `C:\Users\lily1\ucl-predictor\index.html`, no icon, `files` = `{"data.json": "C:\Users\lily1\ucl-predictor\data.json", "src/update.py": {"from": "C:\Users\lily1\ucl-predictor\update.py", "contentType": "text/plain"}, "src/teams.json": "C:\Users\lily1\ucl-predictor\teams.json", "src/index.html.txt": {"from": "C:\Users\lily1\ucl-predictor\index.html", "contentType": "text/plain"}}`.
@@ -30,7 +31,7 @@ Live page: https://claude.ai/artifact/BV98ZMG31YLif14jMU5nja · Local copy: `C:\
 
 ## Debugging the routine
 
-`RemoteTrigger` `list_runs` with the trigger id, then `get_run_log`. `connect_rejected` from the proxy means the cloud "Default" environment's network allowlist is missing `site.api.espn.com` or `api.clubelo.com`; the user adds them in claude.ai/code environment settings.
+`RemoteTrigger` `list_runs` with the trigger id, then `get_run_log`. `connect_rejected` from the proxy means the cloud "Default" environment's network allowlist is missing `site.api.espn.com`, `api.clubelo.com` or `gamma-api.polymarket.com`; the user adds them in claude.ai/code environment settings.
 
 ## Before late January 2027
 

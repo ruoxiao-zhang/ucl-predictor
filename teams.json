@@ -1,5 +1,6 @@
 {
   "_note": "elo0 = hand-estimated rating before matchday 1 (2026-09-07). clubelo = names tried against api.clubelo.com.",
+  "polymarket_slug": "uefa-champions-league-2027-champion-20260701202025549",
   "teams": [
     {"key":"PSG","espn":"160","en":"Paris Saint-Germain","zh":"巴黎圣日耳曼","short":"PSG","pot":1,"elo0":2050,"clubelo":["Paris SG","PSG"]},
     {"key":"BAY","espn":"132","en":"Bayern Munich","zh":"拜仁慕尼黑","short":"BAY","pot":1,"elo0":2030,"clubelo":["Bayern"]},

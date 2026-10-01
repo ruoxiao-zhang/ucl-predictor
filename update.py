@@ -12,11 +12,13 @@ ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/uefa.champions/scor
 CLUBELO = ["http://api.clubelo.com/{}", "https://api.clubelo.com/{}"]
 MONTHS = ["202609", "202610", "202611", "202612", "202701"]  # league phase
 LEAGUE_END = "2027-01-28"
+POLYMARKET = "https://gamma-api.polymarket.com/events?slug={}"
+PM_ALIAS = {"Inter Milan": "Inter"}
 
 # Goal model: rating gap -> expected goals.  SCALE=1050 matches the Elo logistic
 # (expected score 0.64 at +100, 0.76 at +200), so ClubElo ratings plug in directly.
 HFA, BASE, SCALE = 65, 1.38, 1050
-SIMS = 10000
+SIMS = 50000
 LOG = []
 
 
@@ -141,6 +143,37 @@ def load_clubelo(teams):
         else:
             log("WARN", f"ClubElo has no match for {t['en']} (tried {t['clubelo']})")
     return out, day
+
+
+def load_outright(teams, slug):
+    """Polymarket title market: mid price per team, rescaled so the 36 teams sum to 1."""
+    try:
+        ev = json.loads(fetch(POLYMARKET.format(slug)))[0]
+    except Exception as e:
+        log("WARN", f"Polymarket: {e}")
+        return None
+    by_name = {t["en"].lower(): t["key"] for t in teams}
+    raw = {}
+    for m in ev.get("markets", []):
+        if not m.get("active") or m.get("closed"):
+            continue
+        name = PM_ALIAS.get(m.get("groupItemTitle", ""), m.get("groupItemTitle", ""))
+        k = by_name.get(name.lower())
+        if not k:
+            continue
+        try:
+            bid, ask = float(m.get("bestBid") or 0), float(m.get("bestAsk") or 0)
+            p = (bid + ask) / 2 if 0 < bid <= ask else float(json.loads(m["outcomePrices"])[0])
+        except (TypeError, ValueError, KeyError, IndexError):
+            continue
+        raw[k] = p
+    if len(raw) < 30:
+        log("WARN", f"Polymarket: only {len(raw)} teams matched")
+        return None
+    s = sum(raw.values())
+    log("OK", f"Polymarket title market: {len(raw)} teams, prices sum {s:.3f}, volume ${float(ev.get('volume') or 0):,.0f}")
+    return {"src": "Polymarket", "t": dt.datetime.now(dt.timezone.utc).replace(tzinfo=None, microsecond=0).isoformat() + "Z",
+            "volume": round(float(ev.get("volume") or 0)), "p": {k: round(v / s, 4) for k, v in raw.items()}}
 
 
 # ---------- ratings ----------
@@ -338,6 +371,8 @@ def main():
             pred[mid] = {"model": [round(x, 4) for x in probs_d(rh - ra + HFA)], "market": None, "t": None, "backfill": True, "rh": round(rh), "ra": round(ra)}
         m.pop("market", None)
 
+    outright = load_outright(teams, cfg["polymarket_slug"]) or old.get("outright")
+
     t0 = time.time()
     sim = simulate(keys, eff, league, gap, n, seed=today)
     log("OK", f"{n} simulations in {time.time() - t0:.1f}s")
@@ -352,7 +387,8 @@ def main():
                      "win": {k: round(s0["win"][k], 4) for k in keys}, "r16": {k: round(s0["r16"][k], 4) for k in keys}, "elo": e0})
     hist.append({"t": now.isoformat() + "Z", "played": sum(m["state"] == "post" for m in league),
                  "win": {k: round(sim["win"][k], 4) for k in keys}, "r16": {k: round(sim["r16"][k], 4) for k in keys},
-                 "elo": {k: round(eff[k]) for k in keys}})
+                 "elo": {k: round(eff[k]) for k in keys},
+                 "mwin": (outright or {}).get("p")})
 
     out = {
         "updated": now.isoformat() + "Z",
@@ -363,6 +399,7 @@ def main():
         "matches": league,
         "pred": pred,
         "sim": sim,
+        "outright": outright,
         "history": hist,
         "log": LOG,
     }
