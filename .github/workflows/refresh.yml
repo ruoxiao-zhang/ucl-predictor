@@ -1,0 +1,62 @@
+name: Match-night refresh
+
+# Tue/Wed/Thu 00:00 UTC = 08:00 Asia/Shanghai, after European match nights. Pulls results and odds,
+# re-runs the simulation and commits data.json; GitHub Pages redeploys from main on the push.
+on:
+  schedule:
+    - cron: "0 0 * * 2,3,4"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run updater
+        run: |
+          cp data.json prev.json
+          python -X utf8 update.py 2>&1 | tee run.txt
+          exit "${PIPESTATUS[0]}"
+
+      - name: Stop if ESPN was unavailable
+        run: |
+          if grep -Eq '^FAIL +ESPN|keeping previous fixtures' run.txt; then
+            echo "::error::ESPN data was not available; not committing."
+            exit 1
+          fi
+
+      - name: Sanity check
+        run: |
+          python - <<'PY'
+          import json, sys
+          new, old = json.load(open("data.json")), json.load(open("prev.json"))
+          cur = {m["id"]: m for m in new["matches"]}
+          lost = [m["id"] for m in old["matches"] if m["state"] == "post"
+                  and (cur.get(m["id"], {}).get("state") != "post" or cur[m["id"]]["score"] != m["score"])]
+          total = sum(new["sim"]["win"].values())
+          if lost or abs(total - 1) > 0.01:
+              sys.exit(f"::error::sanity check failed: lost/changed results {lost}, title odds sum {total:.3f}")
+          print(f"OK: {sum(m['state'] == 'post' for m in new['matches'])} played, title odds sum {total:.3f}")
+          PY
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898073+github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Data snapshot $(date -u +%F) from GitHub Actions"
+          git pull --rebase origin main
+          git push origin HEAD:main
