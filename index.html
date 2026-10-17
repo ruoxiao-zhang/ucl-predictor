@@ -490,12 +490,12 @@ let MD=null;
 function renderMatches(){
   // accuracy
   const done=D.matches.filter(m=>m.state==="post"&&D.pred[m.id]&&!D.pred[m.id].backfill);
-  let mh=0,brier=0,kh=0,kn=0;
+  let mh=0,brier=0,kh=0,kn=0,kb=0;
   for(const m of done){ const p=D.pred[m.id], o=outcome(m.score); if(argmax(p.model)===o) mh++; brier+=p.model.reduce((s,v,i)=>s+(v-(i===o?1:0))**2,0);
-    if(p.market){ kn++; if(argmax(p.market.p)===o) kh++; } }
+    if(p.market){ kn++; if(argmax(p.market.p)===o) kh++; kb+=p.market.p.reduce((s,v,i)=>s+(v-(i===o?1:0))**2,0); } }
   $("acc").innerHTML=done.length?`<div><b>${mh}/${done.length}</b><span>${L().accModel} · ${pct(mh/done.length,0)}%</span></div>
     <div><b>${kn?`${kh}/${kn}`:"–"}</b><span>${kn?`${L().accMarket} · ${pct(kh/kn,0)}%`:L().accMarketNone}</span></div>
-    <div><b>${(brier/done.length).toFixed(3)}</b><span>${L().accBrier}<br>${L().accBrierHint}</span></div>`:`<div><span>${L().accNone}</span></div>`;
+    <div><b>${(brier/done.length).toFixed(3)}</b><span>${L().accBrier}${kn?` · ${L().market} ${(kb/kn).toFixed(3)}`:""}<br>${L().accBrierHint}</span></div>`:`<div><span>${L().accNone}</span></div>`;
   const mds=[...new Set(D.matches.map(m=>m.md))].sort((a,b)=>a-b);
   if(MD==null){ const nx=D.matches.filter(m=>m.state!=="post").sort((a,b)=>a.date<b.date?-1:1)[0]; MD=nx?nx.md:mds[mds.length-1]; }
   $("mdbar").innerHTML=mds.map(n=>{ const all=D.matches.filter(m=>m.md===n), fin=all.every(m=>m.state==="post");
