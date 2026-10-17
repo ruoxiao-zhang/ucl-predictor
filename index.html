@@ -290,10 +290,10 @@ const I18N={
   split:"模型和市场分歧最大的是 <b>{t}</b>：模拟 {a}%，市场 {b}%。",trendTitle:"夺冠概率走势 · 前四热门",trendEmpty:"走势图需要至少两次更新，下一个比赛日之后就会出现。",
   updated:"数据更新于",tMatches:"每轮比赛预测",tTable:"晋级概率总表",tStand:"积分榜",tMatch:"任选两队",tRatings:"球队实力",
   md:"第 {n} 轮",mdShort:"R{n}",model:"模型",market:"市场",pending:"待赛",live:"进行中",backfill:"回溯",
-  accModel:"模型猜中",accMarket:"市场猜中",accBrier:"模型 Brier 分数",accBrierHint:"越低越好，乱猜约 0.67",accNone:"还没有可对比的已赛场次",
+  accModel:"模型猜中（第 2 轮起）",accMarket:"市场猜中",accBrier:"模型 Brier 分数",accBrierHint:"越低越好，乱猜约 0.67",accNone:"还没有可对比的已赛场次（从第 2 轮开始统计）",
   accMarketNone:"市场赔率从第 2 轮开始记录",hit:"中",miss:"未中",
   mdNote:"模型＝我们的实力评分；市场＝DraftKings 赔率去掉抽水后的概率。模拟时临近的比赛用市场概率，其余用模型。",
-  mdNoteDone:"已赛场次显示的是开赛前最后一次更新时的预测。第 1 轮是用赛前评分回溯计算的。",
+  mdNoteDone:"已赛场次显示的是开赛前最后一次更新时的预测。第 1 轮是建站后用赛前评分回溯计算的，不计入命中率。",
   tableH:"每支球队走到每一轮的概率",tableHint:"按模拟的夺冠概率排序。前 8 名直接进 16 强；第 9–24 名打附加赛；第 25 名以后出局。最后一列是 Polymarket 冠军盘给出的概率，供对照。",
   standH:"联赛阶段积分榜（{n} 场后）",standHint:"右侧“预计排名”“预计积分”是模拟的平均值。",
   z1:"1–8 直接进 16 强",z2:"9–24 附加赛",z3:"25–36 出局",
@@ -321,10 +321,10 @@ const I18N={
   split:"Biggest disagreement: <b>{t}</b>, {a}% in the simulation vs {b}% in the market.",trendTitle:"Title odds over time · top four",trendEmpty:"The trend needs at least two updates. It appears after the next matchday.",
   updated:"Updated",tMatches:"Match predictions",tTable:"Odds by round",tStand:"Table",tMatch:"Any two teams",tRatings:"Team ratings",
   md:"Matchday {n}",mdShort:"MD{n}",model:"Model",market:"Market",pending:"vs",live:"Live",backfill:"Backfilled",
-  accModel:"Model picks correct",accMarket:"Market picks correct",accBrier:"Model Brier score",accBrierHint:"Lower is better; guessing ≈ 0.67",accNone:"No finished games to compare yet",
+  accModel:"Model picks correct (from MD2)",accMarket:"Market picks correct",accBrier:"Model Brier score",accBrierHint:"Lower is better; guessing ≈ 0.67",accNone:"No finished games to compare yet (counted from matchday 2)",
   accMarketNone:"Market odds are recorded from matchday 2",hit:"hit",miss:"miss",
   mdNote:"Model = our ratings. Market = DraftKings odds with the margin removed. The simulation uses the market for imminent games and the model for the rest.",
-  mdNoteDone:"Finished games show the last prediction made before kick-off. Matchday 1 was backfilled from pre-season ratings.",
+  mdNoteDone:"Finished games show the last prediction made before kick-off. Matchday 1 was backfilled from pre-season ratings after the site launched and is not counted in the hit rates.",
   tableH:"How far each team gets",tableHint:"Sorted by simulated title odds. Places 1–8 go straight to the round of 16, 9–24 enter the play-offs, 25+ are out. The last column is the Polymarket title market, for comparison.",
   standH:"League phase table (after {n} games)",standHint:"Projected position and points are averages across all simulations.",
   z1:"1–8 round of 16",z2:"9–24 play-offs",z3:"25–36 eliminated",
@@ -474,7 +474,7 @@ function renderTrend(){
 let MD=null;
 function renderMatches(){
   // accuracy
-  const done=D.matches.filter(m=>m.state==="post"&&D.pred[m.id]);
+  const done=D.matches.filter(m=>m.state==="post"&&D.pred[m.id]&&!D.pred[m.id].backfill);
   let mh=0,brier=0,kh=0,kn=0;
   for(const m of done){ const p=D.pred[m.id], o=outcome(m.score); if(argmax(p.model)===o) mh++; brier+=p.model.reduce((s,v,i)=>s+(v-(i===o?1:0))**2,0);
     if(p.market){ kn++; if(argmax(p.market.p)===o) kh++; } }
