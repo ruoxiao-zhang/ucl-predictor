@@ -310,7 +310,7 @@ const I18N={
   changed:"已修改评分，点“用我的评分重新模拟”更新概率。",done:"已完成 {n} 次模拟，用时 {ms} 毫秒。",
   customOn:"你正在看用自定义评分模拟的结果（不使用市场赔率）。",customOff:"回到官方结果",
   side:"头号热门 <b>{t}</b>：夺冠 {w}%，进决赛 {f}%。第三、四档里最有冲击力的是 <b>{d}</b>，进 8 强 {q}%。",
-  about:[["模型怎么算","每队有一个类 Elo 实力评分。比赛按评分差（主场 +65 分）换算成双方的预期进球，再用泊松分布生成比分。剩下的联赛阶段比赛和整个淘汰赛完整踢 50,000 遍（你自定义评分时在浏览器里踢 10,000 遍），统计每队到达每一轮的次数。"],
+  about:[["模型怎么算","每队有一个类 Elo 实力评分。比赛按评分差（主场 +65 分）换算成双方的预期进球。两个例外：博德闪耀主场额外 +30（9–10 月）/ +60（11–3 月，人工草皮、北极圈冬季，依据 2021 年以来欧战主客场战绩）；顿涅茨克矿工本赛季借用伦敦斯坦福桥作主场，主场加成 −45。再用泊松分布生成比分。剩下的联赛阶段比赛和整个淘汰赛完整踢 50,000 遍（你自定义评分时在浏览器里踢 10,000 遍），统计每队到达每一轮的次数。"],
    ["数据从哪来","赛程、比分和单场赔率来自 ESPN 的公开数据接口，赔率由 DraftKings 提供；冠军盘来自 Polymarket 预测市场。所有赔率只换算成概率展示。评分优先用 ClubElo，连不上时沿用上次的评分，并按欧冠结果自行更新。"],
    ["多久更新一次","每周二、三、四北京时间早上 8 点自动更新：周二抓开赛前的赔率，周三、周四补上前一晚的比分。"],
    ["局限","不单独考虑伤病、轮换和冬窗转会；这些会通过市场赔率和赛果间接体现。淘汰赛的真实对阵产生后，模型会改为直接使用。"]],
@@ -341,7 +341,7 @@ const I18N={
   changed:"Ratings edited. Press “Re-run with my ratings” to update the odds.",done:"Ran {n} simulations in {ms} ms.",
   customOn:"You're viewing a simulation with your own ratings (market odds not used).",customOff:"Back to official results",
   side:"Favourite: <b>{t}</b>, {w}% to win, {f}% to reach the final. Strongest outsider from pots 3–4: <b>{d}</b>, {q}% to reach the quarter-finals.",
-  about:[["How it works","Every team has an Elo-style rating. The rating gap (plus 65 for home advantage) sets each side's expected goals, and a Poisson draw produces the score. The rest of the league phase and the whole knockout bracket are played 50,000 times (10,000 when you re-run with your own ratings in the browser), counting how often each team reaches each round."],
+  about:[["How it works","Every team has an Elo-style rating. The rating gap (plus 65 for home advantage) sets each side's expected goals. Two exceptions: Bodø/Glimt get an extra +30 at home in Sep–Oct and +60 in Nov–Mar (artificial pitch, Arctic winter; based on their European home/away record since 2021), and Shakhtar, playing home games at Stamford Bridge in London this season, get −45. A Poisson draw produces the score. The rest of the league phase and the whole knockout bracket are played 50,000 times (10,000 when you re-run with your own ratings in the browser), counting how often each team reaches each round."],
    ["Where the data comes from","Fixtures, scores and match odds come from ESPN's public data feed (odds by DraftKings); the title market comes from the Polymarket prediction market. Odds are shown only as probabilities. Ratings come from ClubElo when it's reachable; otherwise the last ratings carry over and update from Champions League results."],
    ["How often it updates","Automatically every Tuesday, Wednesday and Thursday at 08:00 Beijing time (00:00 UTC): Tuesday captures pre-match odds, Wednesday and Thursday add the previous night's scores."],
    ["Limits","Injuries, rotation and winter transfers aren't modelled directly; they show up indirectly through market odds and results. Once real knockout ties exist, the model will use them."]],
@@ -358,11 +358,13 @@ let D=null, TEAMS=[], N=0, K={}, ELO=[], OFF=null, RES=null, CUSTOM=false, CELO=
 const nm=t=>LANG==="zh"?TEAMS[t].zh:TEAMS[t].en;
 
 // ---------- model (same as update.py) ----------
-let HFA=65,BASE=1.38,SCALE=1050;
+let HFA=65,BASE=1.38,SCALE=1050,HOME_ADV=[],KO_DAYS={po:"2027-02-18",r16:"2027-03-11",qf:"2027-04-08",sf:"2027-04-29"};
+const today=()=>new Date().toISOString().slice(0,10);
+const hfa=(t,day)=>HFA+HOME_ADV.reduce((s,x)=>s+(x.team===TEAMS[t].key&&(x.from||"0000")<=day.slice(0,10)&&day.slice(0,10)<=(x.until||"9999")?x.delta:0),0);
 const lam=d=>[BASE*Math.pow(10,d/SCALE),BASE*Math.pow(10,-d/SCALE)];
 function pmf(l,k){ let p=Math.exp(-l); for(let i=1;i<=k;i++) p*=l/i; return p; }
-function probs(h,a,neutral,elo){
-  const [lh,la]=lam(elo[h]-elo[a]+(neutral?0:HFA)); let H=0,Dr=0,A=0; const m=[];
+function probs(h,a,neutral,elo,day){
+  const [lh,la]=lam(elo[h]-elo[a]+(neutral?0:hfa(h,day||today()))); let H=0,Dr=0,A=0; const m=[];
   for(let i=0;i<=10;i++){ m[i]=[]; for(let j=0;j<=10;j++){ const p=pmf(lh,i)*pmf(la,j); m[i][j]=p; if(i>j)H+=p; else if(i===j)Dr+=p; else A+=p; } }
   const s=H+Dr+A; return {H:H/s,D:Dr/s,A:A/s,lh,la,m};
 }
@@ -371,25 +373,26 @@ function addRes(pts,gd,gf,h,a,x,y){ gf[h]+=x; gf[a]+=y; gd[h]+=x-y; gd[a]+=y-x; 
 function simulate(S,elo){
   const keys=["top8","top24","r16","qf","sf","fin","win","pts","pos"], c={}; keys.forEach(k=>c[k]=new Float64Array(N));
   const bp=new Int32Array(N),bgd=new Int32Array(N),bgf=new Int32Array(N), rem=[];
-  for(const m of D.matches){ const h=K[m.h],a=K[m.a]; if(m.state==="post") addRes(bp,bgd,bgf,h,a,m.score[0],m.score[1]); else rem.push([h,a]); }
-  const play=(h,a,neu,f)=>{ const [lh,la]=lam(elo[h]-elo[a]+(neu?0:HFA)); return [pois(lh*(f||1)),pois(la*(f||1))]; };
-  const tie=(lo,hi)=>{ const g1=play(lo,hi),g2=play(hi,lo),al=g1[0]+g2[1],ah=g1[1]+g2[0]; if(al!==ah) return al>ah?lo:hi; const e=play(hi,lo,false,1/3); if(e[0]!==e[1]) return e[0]>e[1]?hi:lo; return Math.random()<.5?lo:hi; };
+  for(const m of D.matches){ const h=K[m.h],a=K[m.a]; if(m.state==="post") addRes(bp,bgd,bgf,h,a,m.score[0],m.score[1]); else rem.push([h,a,hfa(h,m.date)]); }
+  const HX={}; for(const r in KO_DAYS) HX[r]=TEAMS.map((_,t)=>hfa(t,KO_DAYS[r]));
+  const play=(h,a,neu,f,x)=>{ const [lh,la]=lam(elo[h]-elo[a]+(neu?0:x)); return [pois(lh*(f||1)),pois(la*(f||1))]; };
+  const tie=(lo,hi,r)=>{ const g1=play(lo,hi,false,1,HX[r][lo]),g2=play(hi,lo,false,1,HX[r][hi]),al=g1[0]+g2[1],ah=g1[1]+g2[0]; if(al!==ah) return al>ah?lo:hi; const e=play(hi,lo,false,1/3,HX[r][hi]); if(e[0]!==e[1]) return e[0]>e[1]?hi:lo; return Math.random()<.5?lo:hi; };
   const fin=(a,b)=>{ let g=play(a,b,true); if(g[0]!==g[1]) return g[0]>g[1]?a:b; g=play(a,b,true,1/3); if(g[0]!==g[1]) return g[0]>g[1]?a:b; return Math.random()<.5?a:b; };
   const sh=(x,y)=>Math.random()<.5?[x,y]:[y,x];
   const pts=new Int32Array(N),gd=new Int32Array(N),gf=new Int32Array(N),rnd=new Float64Array(N),R=[...Array(N).keys()],rank=new Int32Array(N);
   for(let s=0;s<S;s++){
     pts.set(bp);gd.set(bgd);gf.set(bgf);
-    for(const [h,a] of rem){ const g=play(h,a); addRes(pts,gd,gf,h,a,g[0],g[1]); }
+    for(const [h,a,x] of rem){ const g=play(h,a,false,1,x); addRes(pts,gd,gf,h,a,g[0],g[1]); }
     for(let i=0;i<N;i++) rnd[i]=Math.random();
     R.sort((x,y)=>pts[y]-pts[x]||gd[y]-gd[x]||gf[y]-gf[x]||rnd[y]-rnd[x]);
     R.forEach((t,i)=>{ rank[t]=i; c.pts[t]+=pts[t]; c.pos[t]+=i+1; if(i<8)c.top8[t]++; if(i<24)c.top24[t]++; });
-    const pw=[[8,22],[10,20],[12,18],[14,16]].map(([u,l])=>{ const lo=sh(R[l],R[l+1]); return [tie(lo[0],R[u]),tie(lo[1],R[u+1])]; });
+    const pw=[[8,22],[10,20],[12,18],[14,16]].map(([u,l])=>{ const lo=sh(R[l],R[l+1]); return [tie(lo[0],R[u],"po"),tie(lo[1],R[u+1],"po")]; });
     const r16=[]; for(let k=0;k<4;k++){ const w=sh(pw[3-k][0],pw[3-k][1]); r16.push([R[2*k],w[0]],[R[2*k+1],w[1]]); }
-    const W=r16.map(([hi,lo])=>{ c.r16[hi]++; c.r16[lo]++; return tie(lo,hi); });
-    const ko=(a,b)=>rank[a]<rank[b]?tie(b,a):tie(a,b);
+    const W=r16.map(([hi,lo])=>{ c.r16[hi]++; c.r16[lo]++; return tie(lo,hi,"r16"); });
+    const ko=(a,b,r)=>rank[a]<rank[b]?tie(b,a,r):tie(a,b,r);
     const p78=sh(W[6],W[7]),p34=sh(W[2],W[3]),p56=sh(W[4],W[5]);
-    const qw=[[W[0],p78[0]],[p34[0],p56[0]],[W[1],p78[1]],[p34[1],p56[1]]].map(([a,b])=>{ c.qf[a]++;c.qf[b]++; return ko(a,b); });
-    const sw=[[qw[0],qw[1]],[qw[2],qw[3]]].map(([a,b])=>{ c.sf[a]++;c.sf[b]++; return ko(a,b); });
+    const qw=[[W[0],p78[0]],[p34[0],p56[0]],[W[1],p78[1]],[p34[1],p56[1]]].map(([a,b])=>{ c.qf[a]++;c.qf[b]++; return ko(a,b,"qf"); });
+    const sw=[[qw[0],qw[1]],[qw[2],qw[3]]].map(([a,b])=>{ c.sf[a]++;c.sf[b]++; return ko(a,b,"sf"); });
     c.fin[sw[0]]++; c.fin[sw[1]]++; c.win[fin(sw[0],sw[1])]++;
   }
   const out={}; for(const k of keys) out[k]=Array.from(c[k],v=>v/S); return out;
@@ -523,11 +526,11 @@ function fillSelects(){
 function renderMatch(){
   const h=+$("sel-h").value, a=+$("sel-a").value, neu=$("neutral").checked;
   if(h===a){ ["three","three-lab","xg","grid","top5"].forEach(i=>$(i).innerHTML=""); $("mnote").innerHTML=`<div class="note">${L().same}</div>`; return; }
-  const p=probs(h,a,neu,ELO);
+  const real=D.matches.find(m=>(K[m.h]===h&&K[m.a]===a)||(K[m.h]===a&&K[m.a]===h));
+  const p=probs(h,a,neu,ELO,real&&K[real.h]===h&&real.state==="pre"?real.date:today());
   $("three").innerHTML=`<div class="h" style="flex:${p.H}">${pct(p.H,0)}%</div><div class="d" style="flex:${p.D}">${pct(p.D,0)}%</div><div class="a" style="flex:${p.A}">${pct(p.A,0)}%</div>`;
   $("three-lab").innerHTML=`<span>${fmt(L().win,{t:nm(h)})}</span><span>${L().draw}</span><span>${fmt(L().win,{t:nm(a)})}</span>`;
   $("xg").innerHTML=`<div><b>${p.lh.toFixed(2)}</b><span>${fmt(L().xg,{t:nm(h)})}</span></div><div><b>${p.la.toFixed(2)}</b><span>${fmt(L().xg,{t:nm(a)})}</span></div>`;
-  const real=D.matches.find(m=>(K[m.h]===h&&K[m.a]===a)||(K[m.h]===a&&K[m.a]===h));
   let note=L().hypo;
   if(real){ if(real.state==="post") note=fmt(L().realPlayed,{md:real.md,h:nm(K[real.h]),a:nm(K[real.a]),x:real.score[0],y:real.score[1]});
     else { const mk=(D.pred[real.id]||{}).market; note=fmt(L().realTodo,{md:real.md,h:nm(K[real.h]),mk:mk?fmt(L().realMk,{h:pct(mk.p[0],0),d:pct(mk.p[1],0),a:pct(mk.p[2],0)}):""}); } }
@@ -573,7 +576,7 @@ document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",
 applyStatic();
 fetch("data.json",{cache:"no-store"}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); }).then(d=>{
   D=d; TEAMS=d.teams; N=TEAMS.length; TEAMS.forEach((t,i)=>K[t.key]=i);
-  if(d.model){ HFA=d.model.hfa; BASE=d.model.base; SCALE=d.model.scale; }
+  if(d.model){ HFA=d.model.hfa; BASE=d.model.base; SCALE=d.model.scale; HOME_ADV=d.model.home_adv||[]; if(d.model.ko_days) KO_DAYS=d.model.ko_days; }
   OFF=TEAMS.map(t=>t.elo); ELO=OFF.slice(); CUR=current(); RES=fromData();
   const c=store.get("custom",null);
   if(c&&typeof c==="object"){ CELO=c; TEAMS.forEach((t,i)=>{ if(Number.isFinite(c[t.key])) ELO[i]=c[t.key]; }); if(ELO.some((v,i)=>v!==OFF[i])){ renderAll(); runCustom(); return; } }

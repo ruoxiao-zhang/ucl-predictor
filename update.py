@@ -21,6 +21,13 @@ PM_ALIAS = {"Inter Milan": "Inter"}
 HFA, BASE, SCALE = 65, 1.38, 1050
 SIMS = 50000
 LOG = []
+# teams.json "home_adv": extra home advantage for one team over a date range (e.g. Bodø's winter, Shakhtar's borrowed stadium)
+HOME_ADV = []
+KO_DAYS = {"po": "2027-02-18", "r16": "2027-03-11", "qf": "2027-04-08", "sf": "2027-04-29"}  # representative date per knockout round
+
+
+def hfa(team, day):
+    return HFA + sum(x["delta"] for x in HOME_ADV if x["team"] == team and x.get("from", "0000") <= day[:10] <= x.get("until", "9999"))
 
 
 def log(kind, msg):
@@ -193,7 +200,7 @@ def walk_elo(base, base_date, matches):
         pre[m["id"]] = (r[m["h"]], r[m["a"]])
         if m["date"][:10] < base_date:
             continue
-        H, D, _ = probs_d(r[m["h"]] - r[m["a"]] + HFA)
+        H, D, _ = probs_d(r[m["h"]] - r[m["a"]] + hfa(m["h"], m["date"]))
         e = H + 0.5 * D
         x, y = m["score"]
         w = 1 if x > y else 0.5 if x == y else 0
@@ -235,15 +242,17 @@ def simulate(keys, elo, matches, gap, n, seed):
         else:
             remain.append((h, a, lambdas(gap[m["id"]])))
 
-    def play(h, a, neutral=False, f=1.0):
-        lh, la = lambdas(E[h] - E[a] + (0 if neutral else HFA))
+    HX = {r: [hfa(k, day) for k in keys] for r, day in KO_DAYS.items()}
+
+    def play(h, a, neutral=False, f=1.0, rd="po"):
+        lh, la = lambdas(E[h] - E[a] + (0 if neutral else HX[rd][h]))
         return pois(rng, lh * f), pois(rng, la * f)
 
-    def tie(lo, hi):  # lo hosts leg 1, hi hosts leg 2
-        g1, g2 = play(lo, hi), play(hi, lo)
+    def tie(lo, hi, rd):  # lo hosts leg 1, hi hosts leg 2
+        g1, g2 = play(lo, hi, rd=rd), play(hi, lo, rd=rd)
         al, ah = g1[0] + g2[1], g1[1] + g2[0]
         if al != ah: return lo if al > ah else hi
-        et = play(hi, lo, f=1 / 3)
+        et = play(hi, lo, f=1 / 3, rd=rd)
         if et[0] != et[1]: return hi if et[0] > et[1] else lo
         return lo if rng.random() < .5 else hi
 
@@ -272,7 +281,7 @@ def simulate(keys, elo, matches, gap, n, seed):
         pw = []
         for u, l in ((8, 22), (10, 20), (12, 18), (14, 16)):
             lo = sh(R[l], R[l + 1])
-            pw.append((tie(lo[0], R[u]), tie(lo[1], R[u + 1])))
+            pw.append((tie(lo[0], R[u], "po"), tie(lo[1], R[u + 1], "po")))
         r16 = []
         for k in range(4):
             w = sh(*pw[3 - k])
@@ -280,15 +289,15 @@ def simulate(keys, elo, matches, gap, n, seed):
         W = []
         for hi, lo in r16:
             C["r16"][hi] += 1; C["r16"][lo] += 1
-            W.append(tie(lo, hi))
-        ko = lambda a, b: tie(b, a) if rank[a] < rank[b] else tie(a, b)
+            W.append(tie(lo, hi, "r16"))
+        ko = lambda a, b, rd: tie(b, a, rd) if rank[a] < rank[b] else tie(a, b, rd)
         p78, p34, p56 = sh(W[6], W[7]), sh(W[2], W[3]), sh(W[4], W[5])
         qw = []
         for a, b in ((W[0], p78[0]), (p34[0], p56[0]), (W[1], p78[1]), (p34[1], p56[1])):
-            C["qf"][a] += 1; C["qf"][b] += 1; qw.append(ko(a, b))
+            C["qf"][a] += 1; C["qf"][b] += 1; qw.append(ko(a, b, "qf"))
         sw = []
         for a, b in ((qw[0], qw[1]), (qw[2], qw[3])):
-            C["sf"][a] += 1; C["sf"][b] += 1; sw.append(ko(a, b))
+            C["sf"][a] += 1; C["sf"][b] += 1; sw.append(ko(a, b, "sf"))
         C["fin"][sw[0]] += 1; C["fin"][sw[1]] += 1
         C["win"][final(*sw)] += 1
     out = {}
@@ -310,6 +319,7 @@ def main():
     if "--sims" in sys.argv: n = int(sys.argv[sys.argv.index("--sims") + 1])
     cfg = json.load(open(TEAMS_FILE, encoding="utf-8"))
     teams = cfg["teams"]
+    HOME_ADV[:] = cfg.get("home_adv", [])
     keys = [t["key"] for t in teams]
     by_espn = {t["espn"]: t["key"] for t in teams}
     old = json.load(open(DATA_FILE, encoding="utf-8")) if os.path.exists(DATA_FILE) else {}
@@ -359,17 +369,17 @@ def main():
     for m in league:
         mid = m["id"]
         if m["state"] == "pre":
-            d = eff[m["h"]] - eff[m["a"]] + HFA
+            d = eff[m["h"]] - eff[m["a"]] + hfa(m["h"], m["date"])
             p = pred.get(mid, {})
             market = m["market"] or p.get("market")
             pred[mid] = {"model": [round(x, 4) for x in probs_d(d)], "market": market, "t": now.isoformat() + "Z", "rh": round(eff[m["h"]]), "ra": round(eff[m["a"]])}
             gap[mid] = implied_d(market["p"]) if market else d
         elif m["state"] == "in":
-            gap[mid] = eff[m["h"]] - eff[m["a"]] + HFA
+            gap[mid] = eff[m["h"]] - eff[m["a"]] + hfa(m["h"], m["date"])
             if mid in pred and pred[mid].get("market"): gap[mid] = implied_d(pred[mid]["market"]["p"])
         elif mid not in pred:
             rh, ra = pre[mid]
-            pred[mid] = {"model": [round(x, 4) for x in probs_d(rh - ra + HFA)], "market": None, "t": None, "backfill": True, "rh": round(rh), "ra": round(ra)}
+            pred[mid] = {"model": [round(x, 4) for x in probs_d(rh - ra + hfa(m["h"], m["date"]))], "market": None, "t": None, "backfill": True, "rh": round(rh), "ra": round(ra)}
         m.pop("market", None)
 
     outright = load_outright(teams, cfg["polymarket_slug"]) or old.get("outright")
@@ -382,7 +392,7 @@ def main():
     if not hist:  # pre-season starting point: same model, elo0 ratings, nothing played
         e0 = {t["key"]: t["elo0"] for t in teams}
         blank = [dict(m, state="pre", score=None) for m in league]
-        g0 = {m["id"]: e0[m["h"]] - e0[m["a"]] + HFA for m in blank}
+        g0 = {m["id"]: e0[m["h"]] - e0[m["a"]] + hfa(m["h"], m["date"]) for m in blank}
         s0 = simulate(keys, e0, blank, g0, n, seed="preseason")
         hist.append({"t": "2026-09-07T12:00:00Z", "played": 0, "preseason": True,
                      "win": {k: round(s0["win"][k], 4) for k in keys}, "r16": {k: round(s0["r16"][k], 4) for k in keys}, "elo": e0})
@@ -393,7 +403,7 @@ def main():
 
     out = {
         "updated": now.isoformat() + "Z",
-        "model": {"hfa": HFA, "base": BASE, "scale": SCALE, "sims": n},
+        "model": {"hfa": HFA, "base": BASE, "scale": SCALE, "sims": n, "home_adv": HOME_ADV, "ko_days": KO_DAYS},
         "teams": [dict(key=t["key"], en=t["en"], zh=t["zh"], short=t["short"], pot=t["pot"], elo=round(eff[t["key"]]), elo0=t["elo0"], adj=adj.get(t["key"], 0)) for t in teams],
         "ratings": rs,
         "adjustments": [a for a in cfg.get("adjustments", []) if a.get("from", "0000") <= today <= a.get("until", "9999")],

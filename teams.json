@@ -39,5 +39,10 @@
     {"key":"VIK","espn":"510","en":"Viking","zh":"维京","short":"VIK","pot":4,"elo0":1660,"clubelo":["Viking"]},
     {"key":"SAB","espn":"21922","en":"Sabah","zh":"萨巴赫","short":"SAB","pot":4,"elo0":1600,"clubelo":["Sabah"]}
   ],
-  "adjustments": []
+  "adjustments": [],
+ "home_adv": [
+  {"team": "BOD", "delta": 30, "from": "2026-07-01", "until": "2026-10-31", "zh": "博德闪耀：人工草皮 + 北极圈长途客场。2021 年以来欧战秋季主客场净胜球差约 1.5 球（普通球队约 0.8），收缩后 +30。来源：Wikipedia「FK Bodø/Glimt in European football」，2026-10-17 整理", "en": "Bodø/Glimt: artificial pitch and a long Arctic trip. Autumn European home-away goal-difference gap ≈1.5 since 2021 (typical ≈0.8); shrunk to +30. Source: Wikipedia 'FK Bodø/Glimt in European football', compiled 2026-10-17"},
+  {"team": "BOD", "delta": 60, "from": "2026-11-01", "until": "2027-03-31", "zh": "博德闪耀冬季主场：2021 年以来 1–3 月欧战主场 9 胜 1 平 2 负，淘汰赛同对手主客场净胜球差约 2.5 球，收缩后 +60。来源同上", "en": "Bodø/Glimt in winter: 9W 1D 2L in Jan–Mar European home games since 2021; home-away gap vs the same knockout opponents ≈2.5 goals; shrunk to +60. Same source"},
+  {"team": "SHA", "delta": -45, "from": "2026-08-01", "until": "2027-06-30", "zh": "顿涅茨克矿工：本赛季欧冠主场借用伦敦斯坦福桥，近似中立场。来源：矿工官网 2026-08-21", "en": "Shakhtar: home games this season at Stamford Bridge, London, close to a neutral venue. Source: shakhtar.com, 2026-08-21"}
+ ]
 }

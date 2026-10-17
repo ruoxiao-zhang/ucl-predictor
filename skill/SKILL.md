@@ -16,6 +16,7 @@ The old claude.ai artifact (https://claude.ai/artifact/BV98ZMG31YLif14jMU5nja) a
 1. **Sync down.** `git pull` in the project folder (git lives at `C:\Program Files\Git\cmd`). The workflow commits there several times a week.
 2. **Change what was asked.**
    - Injury / suspension / transfer: add to `teams.json` `adjustments` an entry `{"team":"ARS","delta":-30,"from":"YYYY-MM-DD","until":"YYYY-MM-DD","zh":"…","en":"…"}` with a dated news source in the reason. Keep deltas modest (a key player ≈ 20–50) and always set `until`.
+   - Venue-specific home advantage: `teams.json` `home_adv` entries `{"team","delta","from","until","zh","en"}` add to the +65 HFA for that team's home games in the date range (used for Elo updates, predictions and knockout sims via `KO_DAYS`; the page mirrors it). Current: BOD +30 (Sep–Oct) / +60 (Nov–Mar), SHA −45 (Stamford Bridge). Only add one with hard evidence (home/away record), not reputation.
    - Polymarket title market: event slug is `polymarket_slug` in teams.json; if the market is replaced, find the new slug and update it.
    - Model or page changes: keep `update.py` and the page's JS model in sync (HFA, BASE, SCALE are written to data.json and read by the page).
 3. **Run** `python -X utf8 update.py` if the data should reflect the change now (ClubElo WARN lines are normal). Read every line. Or skip it and trigger the workflow after pushing (`workflow_dispatch` on refresh.yml via the GitHub API, token from `git credential fill`; no `gh` CLI here).
