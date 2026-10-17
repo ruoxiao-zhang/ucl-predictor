@@ -93,6 +93,15 @@ def american(s):
     return 100 / (v + 100) if v > 0 else -v / (-v + 100)
 
 
+def decimal(x):
+    """Implied probability from decimal odds (some providers, e.g. Bet 365, only give homeTeamOdds/awayTeamOdds/drawOdds.value)."""
+    try:
+        v = float((x or {}).get("value"))
+    except (TypeError, ValueError):
+        return None
+    return 1 / v if v > 1 else None
+
+
 # ---------- sources ----------
 def load_espn(by_espn):
     matches = []
@@ -123,6 +132,8 @@ def load_espn(by_espn):
                     return (x.get("close") or {}).get("odds") or (x.get("open") or {}).get("odds")
                 ph, pa = american(pick(ml.get("home"))), american(pick(ml.get("away")))
                 pd = american((o.get("drawOdds") or {}).get("moneyLine")) or american(pick(ml.get("draw")))
+                if not (ph and pa and pd):
+                    ph, pa, pd = decimal(o.get("homeTeamOdds")), decimal(o.get("awayTeamOdds")), decimal(o.get("drawOdds"))
                 if ph and pa and pd:
                     s = ph + pd + pa
                     market = {"p": [round(ph / s, 4), round(pd / s, 4), round(pa / s, 4)], "src": (o.get("provider") or {}).get("name", "")}
